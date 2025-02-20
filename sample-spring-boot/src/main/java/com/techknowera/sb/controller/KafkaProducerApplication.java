@@ -9,7 +9,6 @@ public class ProducerApplication {
     }
 }
 
-
 package com.example.msk;
 
 import org.springframework.boot.CommandLineRunner;
@@ -18,10 +17,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.auth.AWSStaticCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.BasicAWSCredentials;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.kafka.AWSKafka;
+import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.model.ListClustersRequest;
 import software.amazon.awssdk.services.kafka.model.ListClustersResponse;
 import software.amazon.awssdk.services.kafka.model.ClusterInfo;
@@ -38,11 +37,11 @@ public class AWSKafkaApplication {
     @Bean
     public CommandLineRunner run() {
         return args -> {
-            // Step 1: Initialize AWS MSK Client with IAM credentials (using static credentials here for demonstration)
-            BasicAWSCredentials awsCredentials = new BasicAWSCredentials("your-access-key-id", "your-secret-access-key");
+            // Step 1: Initialize AWS Kafka Client with IAM credentials (using static credentials here for demonstration)
+            AwsBasicCredentials awsCredentials = AwsBasicCredentials.create("your-access-key-id", "your-secret-access-key");
 
-            AWSKafka kafkaClient = AWSKafka.builder()
-                    .credentialsProvider(new AWSStaticCredentialsProvider(awsCredentials))
+            KafkaClient kafkaClient = KafkaClient.builder()
+                    .credentialsProvider(StaticCredentialsProvider.create(awsCredentials))
                     .region(Region.of("us-east-1"))  // Change to your MSK region
                     .build();
 
@@ -54,9 +53,9 @@ public class AWSKafkaApplication {
     /**
      * List MSK Clusters from the AWS Kafka service.
      * 
-     * @param kafkaClient The AWSKafka client initialized with credentials.
+     * @param kafkaClient The Kafka client initialized with IAM credentials.
      */
-    private void listMSKClusters(AWSKafka kafkaClient) {
+    private void listMSKClusters(KafkaClient kafkaClient) {
         try {
             ListClustersRequest request = ListClustersRequest.builder().build();
             ListClustersResponse response = kafkaClient.listClusters(request);
