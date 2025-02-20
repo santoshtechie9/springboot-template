@@ -7,12 +7,14 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 
 @Component
 public class BinanceWebSocketClient implements WebSocketHandler {
 
     private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/btcusdt@trade";
+    private WebSocketSession session;
 
     @EventListener(ApplicationReadyEvent.class)
     public void connectToBinance() {
@@ -27,22 +29,38 @@ public class BinanceWebSocketClient implements WebSocketHandler {
             }
         });
 
-        futureSession.thenAccept(session -> {
+        futureSession.thenAccept(s -> {
             System.out.println("✅ Connected to Binance WebSocket!");
+            this.session = s;
+            sendSubscriptionMessage();
         }).exceptionally(error -> {
             System.err.println("⚠️ WebSocket connection failed: " + error.getMessage());
             return null;
         });
     }
 
+    private void sendSubscriptionMessage() {
+        if (session != null && session.isOpen()) {
+            try {
+                String subscriptionMessage = "{ \"method\": \"SUBSCRIBE\", \"params\": [\"btcusdt@trade\"], \"id\": 1 }";
+                session.sendMessage(new TextMessage(subscriptionMessage));
+                System.out.println("📡 Subscription message sent!");
+            } catch (Exception e) {
+                System.err.println("⚠️ Failed to send subscription: " + e.getMessage());
+            }
+        }
+    }
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        System.out.println("✅ Connection established with Binance!");
+        System.out.println("✅ WebSocket connection established!");
+        this.session = session;
+        sendSubscriptionMessage();
     }
 
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
-        System.out.println("📩 Received: " + message.getPayload());
+        System.out.println("📩 Received message: " + message.getPayload());
     }
 
     @Override
@@ -60,3 +78,4 @@ public class BinanceWebSocketClient implements WebSocketHandler {
         return false;
     }
 }
+
