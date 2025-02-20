@@ -2,23 +2,14 @@ package com.example.binancews;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.messaging.simp.stomp.*;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.client.WebSocketClient;
+import org.springframework.web.socket.*;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
-import org.springframework.web.socket.messaging.WebSocketStompClient;
-import org.springframework.web.socket.sockjs.client.SockJsClient;
-import org.springframework.web.socket.sockjs.client.Transport;
-import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
 import javax.annotation.PostConstruct;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
+import java.io.IOException;
 
 @Component
-@EnableScheduling
 public class BinanceWebSocketClient {
 
     private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/btcusdt@trade";
@@ -26,40 +17,41 @@ public class BinanceWebSocketClient {
 
     @PostConstruct
     public void connect() {
-        WebSocketClient client = new StandardWebSocketClient();
-        WebSocketStompClient stompClient = new WebSocketStompClient(client);
-        stompClient.setMessageConverter(new org.springframework.messaging.converter.StringMessageConverter());
+        StandardWebSocketClient client = new StandardWebSocketClient();
         
-        StompSessionHandler sessionHandler = new AbstractStompSessionHandler() {
-            @Override
-            public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
-                System.out.println("Connected to Binance WebSocket");
-            }
-
-            @Override
-            public void handleFrame(StompHeaders headers, Object payload) {
-                try {
-                    JsonNode jsonNode = objectMapper.readTree(payload.toString());
-                    System.out.println("Received: " + jsonNode);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-
-            @Override
-            public void handleTransportError(StompSession session, Throwable exception) {
-                System.err.println("Transport Error: " + exception.getMessage());
-            }
-
-            @Override
-            public StompHeaders getConnectHeaders() {
-                return new StompHeaders();
-            }
-        };
-
         try {
-            StompSession session = stompClient.connect(BINANCE_WS_URL, sessionHandler).get();
-        } catch (InterruptedException | ExecutionException e) {
+            client.doHandshake(new WebSocketHandler() {
+                @Override
+                public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+                    System.out.println("Connected to Binance WebSocket");
+                }
+
+                @Override
+                public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) throws Exception {
+                    try {
+                        JsonNode jsonNode = objectMapper.readTree(message.getPayload().toString());
+                        System.out.println("Received: " + jsonNode);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
+                    System.err.println("Transport Error: " + exception.getMessage());
+                }
+
+                @Override
+                public void afterConnectionClosed(WebSocketSession session, CloseStatus closeStatus) throws Exception {
+                    System.out.println("Connection closed: " + closeStatus);
+                }
+
+                @Override
+                public boolean supportsPartialMessages() {
+                    return false;
+                }
+            }, BINANCE_WS_URL).get();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
