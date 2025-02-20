@@ -1,0 +1,62 @@
+package com.example.websocket;
+
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+import org.springframework.web.socket.*;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+
+import java.net.URI;
+import java.util.concurrent.CompletableFuture;
+
+@Component
+public class BinanceWebSocketClient implements WebSocketHandler {
+
+    private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/btcusdt@trade";
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void connectToBinance() {
+        StandardWebSocketClient client = new StandardWebSocketClient();
+        System.out.println("🚀 Connecting to Binance WebSocket...");
+
+        CompletableFuture<WebSocketSession> futureSession = CompletableFuture.supplyAsync(() -> {
+            try {
+                return client.doHandshake(this, URI.create(BINANCE_WS_URL)).get();
+            } catch (Exception e) {
+                throw new RuntimeException("⚠️ WebSocket connection failed: " + e.getMessage(), e);
+            }
+        });
+
+        futureSession.thenAccept(session -> {
+            System.out.println("✅ Connected to Binance WebSocket!");
+        }).exceptionally(error -> {
+            System.err.println("⚠️ WebSocket connection failed: " + error.getMessage());
+            return null;
+        });
+    }
+
+    @Override
+    public void afterConnectionEstablished(WebSocketSession session) {
+        System.out.println("✅ Connection established with Binance!");
+    }
+
+    @Override
+    public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
+        System.out.println("📩 Received: " + message.getPayload());
+    }
+
+    @Override
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        System.err.println("⚠️ WebSocket Error: " + exception.getMessage());
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        System.out.println("❌ WebSocket closed: " + status);
+    }
+
+    @Override
+    public boolean supportsPartialMessages() {
+        return false;
+    }
+}
