@@ -1,56 +1,52 @@
 package com.example.websocket;
 
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Service;
+import org.springframework.web.socket.*;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import jakarta.annotation.PostConstruct;
+
 import java.net.URI;
-import java.util.Timer;
-import java.util.TimerTask;
 
 @Service
-public class BinanceWebSocketService extends WebSocketClient {
+public class BinanceWebSocketClient implements WebSocketHandler {
 
-    private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/stream?streams=btcusdt@trade/ethusdt@trade";
-
-    public BinanceWebSocketService() throws Exception {
-        super(new URI(BINANCE_WS_URL));
-    }
+    private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/btcusdt@trade";
+    private WebSocketSession session;
 
     @PostConstruct
-    public void startConnection() {
-        System.out.println("🚀 Starting Binance WebSocket...");
-        this.connect();
+    public void connectToBinance() {
+        StandardWebSocketClient client = new StandardWebSocketClient();
+        try {
+            System.out.println("🚀 Connecting to Binance WebSocket...");
+            client.doHandshake(this, URI.create(BINANCE_WS_URL));
+        } catch (Exception e) {
+            System.err.println("⚠️ WebSocket connection failed: " + e.getMessage());
+        }
     }
 
     @Override
-    public void onOpen(ServerHandshake handshakedata) {
+    public void afterConnectionEstablished(WebSocketSession session) {
+        this.session = session;
         System.out.println("✅ Connected to Binance WebSocket!");
-        
-        // Delay subscription to avoid race conditions
-        new Timer().schedule(new TimerTask() {
-            @Override
-            public void run() {
-                String subscribeMessage = "{\"method\": \"SUBSCRIBE\", \"params\": [\"btcusdt@trade\", \"ethusdt@trade\"], \"id\": 1}";
-                send(subscribeMessage);
-                System.out.println("🔗 Subscribed to BTC/USDT and ETH/USDT trades");
-            }
-        }, 2000);
     }
 
     @Override
-    public void onMessage(String message) {
-        System.out.println("📩 Received: " + message);
+    public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
+        System.out.println("📩 Received: " + message.getPayload());
     }
 
     @Override
-    public void onClose(int code, String reason, boolean remote) {
-        System.out.println("❌ WebSocket closed! Reason: " + reason + " | Code: " + code);
+    public void handleTransportError(WebSocketSession session, Throwable exception) {
+        System.err.println("⚠️ WebSocket Error: " + exception.getMessage());
     }
 
     @Override
-    public void onError(Exception ex) {
-        System.err.println("⚠️ Error: " + ex.getMessage());
-        ex.printStackTrace();
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        System.out.println("❌ WebSocket closed: " + status);
+    }
+
+    @Override
+    public boolean supportsPartialMessages() {
+        return false;
     }
 }
