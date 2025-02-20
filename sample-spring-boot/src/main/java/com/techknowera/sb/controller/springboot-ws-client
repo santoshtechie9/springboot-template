@@ -7,7 +7,6 @@ import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import java.net.URI;
-import java.util.concurrent.CompletableFuture;
 
 @Component
 public class BinanceWebSocketClient implements WebSocketHandler {
@@ -19,13 +18,15 @@ public class BinanceWebSocketClient implements WebSocketHandler {
         StandardWebSocketClient client = new StandardWebSocketClient();
         System.out.println("🚀 Connecting to Binance WebSocket...");
 
-        CompletableFuture<WebSocketSession> futureSession = client.execute(this, URI.create(BINANCE_WS_URL));
-        futureSession.thenAccept(session -> {
-            System.out.println("✅ Connected to Binance WebSocket!");
-        }).exceptionally(error -> {
-            System.err.println("⚠️ WebSocket connection failed: " + error.getMessage());
-            return null;
-        });
+        // Correct way to initiate connection using doHandshake() method
+        client.doHandshake(this, URI.create(BINANCE_WS_URL)).addCallback(
+            session -> {
+                System.out.println("✅ Connected to Binance WebSocket!");
+            },
+            error -> {
+                System.err.println("⚠️ WebSocket connection failed: " + error.getMessage());
+            }
+        );
     }
 
     @Override
