@@ -1,33 +1,36 @@
 package com.example.websocket;
 
-import org.springframework.stereotype.Service;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
-import jakarta.annotation.PostConstruct;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 
 import java.net.URI;
+import java.util.concurrent.CompletableFuture;
 
-@Service
+@Component
 public class BinanceWebSocketClient implements WebSocketHandler {
 
     private static final String BINANCE_WS_URL = "wss://stream.binance.com:9443/ws/btcusdt@trade";
-    private WebSocketSession session;
 
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void connectToBinance() {
         StandardWebSocketClient client = new StandardWebSocketClient();
-        try {
-            System.out.println("🚀 Connecting to Binance WebSocket...");
-            client.doHandshake(this, URI.create(BINANCE_WS_URL));
-        } catch (Exception e) {
-            System.err.println("⚠️ WebSocket connection failed: " + e.getMessage());
-        }
+        System.out.println("🚀 Connecting to Binance WebSocket...");
+
+        CompletableFuture<WebSocketSession> futureSession = client.execute(this, URI.create(BINANCE_WS_URL));
+        futureSession.thenAccept(session -> {
+            System.out.println("✅ Connected to Binance WebSocket!");
+        }).exceptionally(error -> {
+            System.err.println("⚠️ WebSocket connection failed: " + error.getMessage());
+            return null;
+        });
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        this.session = session;
-        System.out.println("✅ Connected to Binance WebSocket!");
+        System.out.println("✅ Connection established with Binance!");
     }
 
     @Override
