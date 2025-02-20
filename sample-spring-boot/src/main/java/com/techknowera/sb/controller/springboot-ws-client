@@ -18,7 +18,6 @@ public class BinanceWebSocketClient implements WebSocketHandler {
         StandardWebSocketClient client = new StandardWebSocketClient();
         System.out.println("🚀 Connecting to Binance WebSocket...");
 
-        // Correct way to initiate connection using doHandshake() method
         client.doHandshake(this, URI.create(BINANCE_WS_URL)).addCallback(
             session -> {
                 System.out.println("✅ Connected to Binance WebSocket!");
@@ -32,16 +31,24 @@ public class BinanceWebSocketClient implements WebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         System.out.println("✅ Connection established with Binance!");
+        try {
+            String subscribeMessage = "{\"method\": \"SUBSCRIBE\", \"params\": [\"btcusdt@trade\"], \"id\": 1}";
+            session.sendMessage(new TextMessage(subscribeMessage));
+            System.out.println("📨 Subscription message sent: " + subscribeMessage);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void handleMessage(WebSocketSession session, WebSocketMessage<?> message) {
-        System.out.println("📩 Received: " + message.getPayload());
+        System.out.println("📩 Received message: " + message.getPayload().toString());
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) {
-        System.err.println("⚠️ WebSocket Error: " + exception.getMessage());
+        System.err.println("⚠️ WebSocket Transport Error: " + exception.getMessage());
+        exception.printStackTrace();
     }
 
     @Override
@@ -51,6 +58,6 @@ public class BinanceWebSocketClient implements WebSocketHandler {
 
     @Override
     public boolean supportsPartialMessages() {
-        return false;
+        return true;
     }
 }
