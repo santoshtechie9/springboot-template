@@ -1,6 +1,4 @@
 
-Let’s break this down step by step!  
-
 ### **What is a Design Pattern?**  
 A **design pattern** is a repeatable solution to a common problem in a specific context. It’s a proven template or blueprint that helps structure and solve recurring design challenges, promoting best practices, maintainability, and scalability.  
 
